@@ -4,6 +4,10 @@
 <p align='center'>
     <img src="./config/doc/lio-sam.gif" alt="drawing" width="800"/>
 </p>
+
+
+--------------------------------------- divide line -----------------------------------------------------
+
 # LIO-SAM
 
 **A real-time lidar-inertial odometry package. We strongly recommend the users read this document thoroughly and test the package with the provided dataset first. A video of the demonstration of the method can be found on [YouTube](https://www.youtube.com/watch?v=A0H8CoORZJU).**
