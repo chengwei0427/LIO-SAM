@@ -1,11 +1,19 @@
 # Modified LIO-SAM
 **Compatible with the 6-dof imu(Rough finished the first version).**
 
+## Modification
+
+  - Refactoring the imageProjection function;
+  - Modify the mapOptmization function,the new back-end optimization not rely on the robot_localization node [**This part is not uploaded to the repository**].
+  - run with 6-dof imu.
+
+## Example results 
+
 <p align='center'>
     <img src="./config/doc/lio-sam.gif" alt="drawing" width="800"/>
 </p>
 
-## Example results 
+### video
 
  [Bilibili Tutorial video](https://www.bilibili.com/video/BV1Qa411v7fp?spm_id_from=333.337.search-card.all.click) 
  
