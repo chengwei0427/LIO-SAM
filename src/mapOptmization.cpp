@@ -16,6 +16,7 @@
 #include <gtsam/inference/Symbol.h>
 
 #include <gtsam/nonlinear/ISAM2.h>
+#include <chrono>
 
 using namespace gtsam;
 
@@ -186,6 +187,7 @@ public:
         downSizeFilterICP.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
         downSizeFilterSurroundingKeyPoses.setLeafSize(surroundingKeyframeDensity, surroundingKeyframeDensity, surroundingKeyframeDensity); // for surrounding key poses of scan-to-map optimization
 
+        std::cout << std::getenv("HOME") << std::endl;
         allocateMemory();
     }
 
@@ -254,8 +256,11 @@ public:
             timeLastProcessing = timeLaserInfoCur;
             ros::Time t1 = ros::Time::now();
             updateInitialGuess();
-
+            auto t01 = std::chrono::steady_clock::now();
             extractSurroundingKeyFrames();
+            auto t02 = std::chrono::steady_clock::now();
+            auto time_used1 = std::chrono::duration_cast<std::chrono::milliseconds>(t02 - t01);
+            // cout << "takes: " << time_used1.count() << "ms" << endl;
 
             downsampleCurrentScan();
             // std::cout << "initial: " << transformTobeMapped[0] << " " << transformTobeMapped[1] << " " << transformTobeMapped[2]
@@ -272,7 +277,7 @@ public:
 
             publishFrames();
             ros::Time t2 = ros::Time::now();
-            std::cout << "mapping takes: " << (t2 - t1).toSec() * 1000 << "ms" << std::endl;
+            // std::cout << "mapping takes: " << (t2 - t1).toSec() * 1000 << "ms" << std::endl;
             laser_num++;
         }
     }
@@ -306,7 +311,8 @@ public:
             cloudOut->points[i].x = transCur(0, 0) * pointFrom.x + transCur(0, 1) * pointFrom.y + transCur(0, 2) * pointFrom.z + transCur(0, 3);
             cloudOut->points[i].y = transCur(1, 0) * pointFrom.x + transCur(1, 1) * pointFrom.y + transCur(1, 2) * pointFrom.z + transCur(1, 3);
             cloudOut->points[i].z = transCur(2, 0) * pointFrom.x + transCur(2, 1) * pointFrom.y + transCur(2, 2) * pointFrom.z + transCur(2, 3);
-            cloudOut->points[i].intensity = pointFrom.intensity;
+            // cloudOut->points[i].intensity = pointFrom.intensity;
+            cloudOut->points[i].intensity = transformIn->intensity; //   index
         }
         return cloudOut;
     }
@@ -347,9 +353,10 @@ public:
 
     bool saveMapService(GC_LOAM::save_mapRequest &req, GC_LOAM::save_mapResponse &res)
     {
-        string saveMapDirectory;
+        std::string saveMapDirectory = "/lio_sam_map/";
 
-        cout << "****************************************************" << endl;
+        cout
+            << "****************************************************" << endl;
         cout << "Saving map to pcd files ..." << endl;
         if (req.destination.empty())
             saveMapDirectory = std::getenv("HOME") + savePCDDirectory;
@@ -393,7 +400,7 @@ public:
         else
         {
             // save corner cloud
-            pcl::io::savePCDFileBinary(saveMapDirectory + "/CornerMap.pcd", *globalCornerCloud);
+            pcl::io::savePCDFileASCII(saveMapDirectory + "/CornerMap.pcd", *globalCornerCloud);
             // save surf cloud
             pcl::io::savePCDFileBinary(saveMapDirectory + "/SurfMap.pcd", *globalSurfCloud);
         }
@@ -432,7 +439,7 @@ public:
 
         if (!saveMapService(req, res))
         {
-            cout << "Fail to save map" << endl;
+            cout << "---------------------------------Fail to save map" << endl;
         }
     }
 
@@ -1046,7 +1053,7 @@ public:
                         laserCloudOriCornerVec[i] = pointOri;
                         coeffSelCornerVec[i] = coeff;
                         laserCloudOriCornerFlag[i] = true;
-                        std::cout << "add corner constraint" << std::endl;
+                        // std::cout << "add corner constraint" << std::endl;
                         FactorParam factor;
                         factor.col(0) << cx, cy, cz;
                         factor.col(1) = esolver.eigenvectors().col(2).normalized().cast<double>();
@@ -1600,6 +1607,7 @@ public:
         if (cloudKeyPoses3D->points.empty())
             return;
 
+        // std::cout << "corner:" << laserCloudCornerLastDSNum << ",surf: " << laserCloudSurfLastDSNum << std::endl;
         if (laserCloudCornerLastDSNum > edgeFeatureMinValidNum && laserCloudSurfLastDSNum > surfFeatureMinValidNum)
         {
             kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
@@ -1623,7 +1631,7 @@ public:
             transformUpdate();
             // visualize_factor(surf_factor, timeLaserInfoStamp, 250, pub_select_surf);
             // visualize_factor(corner_factor, timeLaserInfoStamp, 100, pub_select_corner);
-            std::cout << "iter: " << iterCount << std::endl;
+            // std::cout << "iter: " << iterCount << std::endl;
         }
         else
         {

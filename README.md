@@ -25,6 +25,10 @@
 
  [Bilibili Tutorial video](https://www.bilibili.com/video/BV1Qa411v7fp?spm_id_from=333.337.search-card.all.click) 
  
+
+## A new Localization project Released(2022/09/16)
+[Lidar-IMU-Localization](https://github.com/chengwei0427/Lidar_IMU_Localization)
+
 --------------------------------------- divide line -----------------------------------------------------
 
 # LIO-SAM
