@@ -27,6 +27,17 @@ struct OusterPointXYZIRT
 POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPointXYZIRT,
                                   (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(uint32_t, t, t)(uint16_t, reflectivity, reflectivity)(uint8_t, ring, ring)(uint16_t, noise, noise)(uint32_t, range, range))
 
+struct rsPointXYZIRT
+{
+    PCL_ADD_POINT4D;
+    uint8_t intensity;
+    uint16_t ring = 0;
+    double timestamp = 0;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+POINT_CLOUD_REGISTER_POINT_STRUCT(rsPointXYZIRT,
+                                  (float, x, x)(float, y, y)(float, z, z)(uint8_t, intensity, intensity)(uint16_t, ring, ring)(double, timestamp, timestamp))
+
 // Use the Velodyne point format as a common representation
 using PointXYZIRT = VelodynePointXYZIRT;
 
@@ -65,6 +76,7 @@ private:
 
     pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
     pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
+    pcl::PointCloud<rsPointXYZIRT>::Ptr tmpRsCloudIn;
     pcl::PointCloud<PointType>::Ptr fullCloud;
     pcl::PointCloud<PointType>::Ptr extractedCloud;
 
@@ -101,6 +113,7 @@ public:
     {
         laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
         tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
+        tmpRsCloudIn.reset(new pcl::PointCloud<rsPointXYZIRT>());
         fullCloud.reset(new pcl::PointCloud<PointType>());
         extractedCloud.reset(new pcl::PointCloud<PointType>());
 
@@ -212,6 +225,34 @@ public:
                         dst.intensity = src.intensity;
                         dst.ring = src.ring;
                         dst.time = src.t * 1e-9f;
+                    }
+                }
+                else if (sensor == SensorType::ROBOSENSE)
+                {
+                    //  FIXME: robosense时间戳为最后一个点的数据
+                    pcl::fromROSMsg(currentCloudMsg, *tmpRsCloudIn);
+                    // inputCloud->points.resize(tmpRSCloudIn->size());
+                    // inputCloud->is_dense = tmpRSCloudIn->is_dense;
+                    double timespan = tmpRsCloudIn->points[tmpRsCloudIn->size() - 1].timestamp - tmpRsCloudIn->points[0].timestamp;
+                    std::cout << "fist: " << tmpRsCloudIn->points[1].timestamp
+                              << ", 100: " << tmpRsCloudIn->points[100].timestamp
+                              << ",intervel: " << tmpRsCloudIn->points[tmpRsCloudIn->size() - 1].timestamp - tmpRsCloudIn->points[0].timestamp
+                              << ",t: " << tmpRsCloudIn->points[0].timestamp - currentCloudMsg.header.stamp.toSec()
+                              << "timespan: " << timespan << std::endl;
+                    for (size_t i = 0; i < tmpRsCloudIn->size(); i++)
+                    {
+                        auto &src = tmpRsCloudIn->points[i];
+                        if (!pcl_isfinite(src.x) || !pcl_isfinite(src.y) || !pcl_isfinite(src.z))
+                            continue;
+
+                        PointXYZIRT dst;
+                        dst.x = src.x;
+                        dst.y = src.y;
+                        dst.z = src.z;
+                        dst.intensity = src.intensity;
+                        dst.ring = src.ring;
+                        dst.time = src.timestamp - tmpRsCloudIn->points[0].timestamp;
+                        laserCloudIn->push_back(dst);
                     }
                 }
                 else
@@ -560,6 +601,7 @@ public:
         t_raw[0] = startOdomMsg.pose.pose.position.x + s * (nextOdomMsg.pose.pose.position.x - startOdomMsg.pose.pose.position.x);
         t_raw[1] = startOdomMsg.pose.pose.position.y + s * (nextOdomMsg.pose.pose.position.y - startOdomMsg.pose.pose.position.y);
         t_raw[2] = startOdomMsg.pose.pose.position.z + s * (nextOdomMsg.pose.pose.position.z - startOdomMsg.pose.pose.position.z);
+        // t_raw[0] = t_raw[1] = t_raw[2] = 0;
 
         Eigen::Quaterniond q_pre(startOdomMsg.pose.pose.orientation.w, startOdomMsg.pose.pose.orientation.x,
                                  startOdomMsg.pose.pose.orientation.y, startOdomMsg.pose.pose.orientation.z);

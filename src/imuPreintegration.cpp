@@ -272,7 +272,7 @@ public:
         bool degenerate = (int)odomMsg->pose.covariance[0] == 1 ? true : false;
         gtsam::Pose3 lidarPose = gtsam::Pose3(gtsam::Rot3::Quaternion(r_w, r_x, r_y, r_z), gtsam::Point3(p_x, p_y, p_z));
 
-        std::cout << "imu pre delay: " << ROS_TIME(&imuQueOpt.back()) - currentCorrectionTime << std::endl;
+        // std::cout << "imu pre delay: " << ROS_TIME(&imuQueOpt.back()) - currentCorrectionTime << std::endl;
         // 0. initialize system
         if (systemInitialized == false)
         {
@@ -439,7 +439,7 @@ public:
     bool failureDetection(const gtsam::Vector3 &velCur, const gtsam::imuBias::ConstantBias &biasCur)
     {
         Eigen::Vector3f vel(velCur.x(), velCur.y(), velCur.z());
-        if (vel.norm() > 10)
+        if (vel.norm() > 20)
         {
             std::cout << "Large velocity, reset IMU-preintegration!" << std::endl;
             return true;
