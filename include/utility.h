@@ -61,7 +61,8 @@ typedef pcl::PointXYZI PointType;
 enum class SensorType
 {
     VELODYNE,
-    OUSTER
+    OUSTER,
+    ROBOSENSE
 };
 
 class ParamServer
@@ -185,6 +186,10 @@ public:
         else if (sensorStr == "ouster")
         {
             sensor = SensorType::OUSTER;
+        }
+        else if (sensorStr == "robosense")
+        {
+            sensor = SensorType::ROBOSENSE;
         }
         else
         {
