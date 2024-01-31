@@ -14,6 +14,7 @@
   - Refactoring the imageProjection function;
   - Modify the mapOptmization function,the new back-end optimization not rely on the robot_localization node [**This part is not uploaded to the repository**].
   - run with 6-dof imu.
+  - add direct lio support
 
 ## Example results 
 
