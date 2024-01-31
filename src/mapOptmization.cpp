@@ -1,6 +1,6 @@
 #include "utility.h"
-#include "GC_LOAM/cloud_info.h"
-#include "GC_LOAM/save_map.h"
+#include "lio_sam/cloud_info.h"
+#include "lio_sam/save_map.h"
 
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
@@ -79,7 +79,7 @@ public:
     ros::ServiceServer srvSaveMap;
 
     std::deque<nav_msgs::Odometry> gpsQueue;
-    GC_LOAM::cloud_info cloudInfo;
+    lio_sam::cloud_info cloudInfo;
 
     vector<pcl::PointCloud<PointType>::Ptr> cornerCloudKeyFrames;
     vector<pcl::PointCloud<PointType>::Ptr> surfCloudKeyFrames;
@@ -165,11 +165,11 @@ public:
         pubLaserOdometryIncremental = nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 1);
         pubPath = nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1);
 
-        subCloud = nh.subscribe<GC_LOAM::cloud_info>("lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler, this);
+        subCloud = nh.subscribe<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler, this);
         subGPS = nh.subscribe<nav_msgs::Odometry>(gpsTopic, 200, &mapOptimization::gpsHandler, this);
         subLoop = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this);
 
-        srvSaveMap = nh.advertiseService("GC_LOAM/save_map", &mapOptimization::saveMapService, this);
+        srvSaveMap = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
 
         pubHistoryKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
         pubIcpKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_corrected_cloud", 1);
@@ -235,7 +235,7 @@ public:
         matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
     }
 
-    void laserCloudInfoHandler(const GC_LOAM::cloud_infoConstPtr &msgIn)
+    void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr &msgIn)
     {
         // extract time stamp
         timeLaserInfoStamp = msgIn->header.stamp;
@@ -351,7 +351,7 @@ public:
         return thisPose6D;
     }
 
-    bool saveMapService(GC_LOAM::save_mapRequest &req, GC_LOAM::save_mapResponse &res)
+    bool saveMapService(lio_sam::save_mapRequest &req, lio_sam::save_mapResponse &res)
     {
         std::string saveMapDirectory = "/lio_sam_map/";
 
@@ -434,8 +434,8 @@ public:
         if (savePCD == false)
             return;
 
-        GC_LOAM::save_mapRequest req;
-        GC_LOAM::save_mapResponse res;
+        lio_sam::save_mapRequest req;
+        lio_sam::save_mapResponse res;
 
         if (!saveMapService(req, res))
         {

@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
-project(GC_LOAM)  # this is a slam modified from lio-sam for 6-dof imu
+project(lio_sam)  # this is a slam modified from lio-sam for 6-dof imu
 
 set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g -pthread")
 
 find_package(catkin REQUIRED COMPONENTS
@@ -24,34 +24,13 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenMP REQUIRED)
 find_package(PCL REQUIRED QUIET)
 find_package(OpenCV REQUIRED QUIET)
-# add third part conf
-set(3RDPARTY_DIR ${PROJECT_SOURCE_DIR}/../../../workspace/3rdparty)
 
-set(GFLAGS_INCLUDE_DIRS ${3RDPARTY_DIR}/gflags2.2.2/include)
-set(GFLAGS_LIBRARY_DIRS ${3RDPARTY_DIR}/gflags2.2.2/lib)
-file(GLOB GFLAGS_LIBRARIES ${GFLAGS_LIBRARY_DIRS}/*.a ${GFLAGS_LIBRARY_DIRS}/*.so*)
-
-set(GLOG_INCLUDE_DIRS ${3RDPARTY_DIR}/glog040/include)
-set(GLOG_LIBRARY_DIRS ${3RDPARTY_DIR}/glog040/lib)
-file(GLOB GLOG_LIBRARIES ${GLOG_LIBRARY_DIRS}/*.a ${GLOG_LIBRARY_DIRS}/*.so*)
-
-
-# find_package(Ceres REQUIRED PATHS /home/cc/workspace/3rdparty/ceres_1.14)
-set(CERES_INCLUDE_DIRS ${3RDPARTY_DIR}/ceres_1.14/include)
-set(CERES_LIBRARY_DIRS ${3RDPARTY_DIR}/ceres_1.14/lib)
-file(GLOB CERES_LIBRARIES ${CERES_LIBRARY_DIRS}/*.a ${CERES_LIBRARY_DIRS}/*.so*)
+find_package(Ceres REQUIRED PATHS /home/cc/workspace/3rdparty/ceres_1.14)
 
 message(STATUS "Using catkin version ${catkin_VERSION}")
 message(STATUS "Using Ceres version ${CERES_VERSION}")
 
-# find_package(GTSAM REQUIRED QUIET)
-#algo inc & lib
-set(GTSAM_INCLUDE_DIR /home/cc/workspace/3rdparty/gtsam4.2a0/include)
-set(GTSAM_LIBRARY_DIRS /home/cc/workspace/3rdparty/gtsam4.2a0/lib)
-file(GLOB GTSAM_LIBRARIES ${GTSAM_LIBRARY_DIRS}/*.a ${GTSAM_LIBRARY_DIRS}/*.so*)
-
-# find_package(Ceres REQUIRED)
-# find_package(SuiteSparse REQUIRED)
+find_package(GTSAM REQUIRED QUIET)
 
 add_message_files(
   DIRECTORY msg
@@ -92,8 +71,6 @@ include_directories(
 	include
 	${catkin_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
-  ${GLOG_INCLUDE_DIRS}
-  ${GFLAGS_INCLUDE_DIRS}
   ${CERES_INCLUDE_DIRS}
   ${SUITESPARSE_INCLUDE_DIRS}
   
@@ -106,8 +83,6 @@ link_directories(
 	include
 	${PCL_LIBRARY_DIRS}
   ${OpenCV_LIBRARY_DIRS}
-  ${GFLAGS_LIBRARY_DIRS}
-  ${GLOG_LIBRARY_DIRS}
   ${CERES_LIBRARY_DIRS}
   ${GTSAM_LIBRARY_DIRS}
 )
@@ -135,18 +110,3 @@ target_link_libraries(${PROJECT_NAME}_mapOptmization ${catkin_LIBRARIES} ${PCL_L
 # IMU Preintegration
 add_executable(${PROJECT_NAME}_imuPreintegration src/imuPreintegration.cpp)
 target_link_libraries(${PROJECT_NAME}_imuPreintegration ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} gtsam libtbb.so)
-
-# 
-# add_executable(${PROJECT_NAME}_featureExtract src/lio/featureExtract.cpp)
-# target_link_libraries(${PROJECT_NAME}_featureExtract ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
-
-# add_executable(${PROJECT_NAME}_poseEstimate src/lio/PoseEstimation.cpp src/lio/Estimator.cpp src/lio/IMUIntegrator.cpp)
-# target_link_libraries(${PROJECT_NAME}_poseEstimate 
-#                       ${catkin_LIBRARIES}  
-#                       ${PCL_LIBRARIES} 
-#                       ${OpenCV_LIBRARIES} 
-#                       ${GLOG_LIBRARIES} 
-#                       ${GFLAGS_LIBRARIES} 
-#                       ${SUITESPARSE_LIBRARIES}
-#                       ${CHOLMOD_LIBRARY}
-#                       ${CERES_LIBRARIES} libgomp.so libblas.so liblapack.so)

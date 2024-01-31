@@ -1,24 +1,20 @@
 <launch>
 
-    <arg name="project" default="GC_LOAM"/>
+    <arg name="project" default="lio_sam"/>
+    <arg name="rviz" default="true" />
     
-    <node pkg="tf" type="static_transform_publisher" name="base_link_joint" args="0 0 0 0 0 0 base_link chassis_link 100" />
-    <node pkg="tf" type="static_transform_publisher" name="imu_joint" args="0 0 0 0 0 0 chassis_link imu_link 100" />
-    <node pkg="tf" type="static_transform_publisher" name="gps_joint" args="0 0 0 0 0 0 chassis_link gps_link 100" />
-    <node pkg="tf" type="static_transform_publisher" name="velodyne_joint" args="0 0 0 0 0 0 chassis_link velodyne 100" />
-
     <!-- Parameters -->
-    <rosparam file="$(find GC_LOAM)/config/params.yaml" command="load" />
+    <rosparam file="$(find lio_sam)/config/params.yaml" command="load" />
 
     <!--- LOAM -->
-    <include file="$(find GC_LOAM)/launch/include/module_loam.launch" />
+    <node pkg="$(arg project)" type="$(arg project)_imuPreintegration"   name="$(arg project)_imuPreintegration"    output="screen" 	required="true" />
+    <node pkg="$(arg project)" type="$(arg project)_imageProjection"     name="$(arg project)_imageProjection"      output="screen"     required="true" />
+    <node pkg="$(arg project)" type="$(arg project)_featureExtraction"   name="$(arg project)_featureExtraction"    output="screen"     required="true" />
+    <node pkg="$(arg project)" type="$(arg project)_mapOptmization"      name="$(arg project)_mapOptmization"       output="screen"     required="true" />
 
     <!--- Run Rviz-->
-    <include file="$(find GC_LOAM)/launch/include/module_rviz.launch" />
-
-    <arg name="bag_filename" default="/media/cc/A0EC52D0EC52A078/DATA/zhongche/2021-12-01-13-07-40.bag"/>
-    <!-- <arg name="bag_filename" default="/media/cc/A0EC52D0EC52A078/DATA/VLP-16/2022-02-25-13-36-53.bag"/> -->
-    <!-- <arg name="bag_filename" default="/media/cc/A0EC52D0EC52A078/DATA/wistron/new_driver/2021-09-28-14-43-19.bag"/> -->
-    <node name="playbag" pkg="rosbag" type="play" args="--clock $(arg bag_filename) -s 10 -r 1.0 " />
+    <group if="$(arg rviz)">
+        <node launch-prefix="nice" pkg="rviz" type="rviz" name="$(arg project)_rviz" args="-d $(find lio_sam)/launch/rviz.rviz" />
+    </group>
 
 </launch>

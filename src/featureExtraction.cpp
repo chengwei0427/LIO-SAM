@@ -1,5 +1,5 @@
 #include "utility.h"
-#include "GC_LOAM/cloud_info.h"
+#include "lio_sam/cloud_info.h"
 
 struct smoothness_t
 {
@@ -31,7 +31,7 @@ public:
 
     pcl::VoxelGrid<PointType> downSizeFilter;
 
-    GC_LOAM::cloud_info cloudInfo;
+    lio_sam::cloud_info cloudInfo;
     std_msgs::Header cloudHeader;
 
     std::vector<smoothness_t> cloudSmoothness;
@@ -41,9 +41,9 @@ public:
 
     FeatureExtraction()
     {
-        subLaserCloudInfo = nh.subscribe<GC_LOAM::cloud_info>("lio_sam/deskew/cloud_info", 1, &FeatureExtraction::laserCloudInfoHandler, this);
+        subLaserCloudInfo = nh.subscribe<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1, &FeatureExtraction::laserCloudInfoHandler, this);
 
-        pubLaserCloudInfo = nh.advertise<GC_LOAM::cloud_info>("lio_sam/feature/cloud_info", 1);
+        pubLaserCloudInfo = nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1);
         pubCornerPoints = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1);
         pubSurfacePoints = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
 
@@ -65,7 +65,7 @@ public:
         cloudLabel = new int[N_SCAN * Horizon_SCAN];
     }
 
-    void laserCloudInfoHandler(const GC_LOAM::cloud_infoConstPtr &msgIn)
+    void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr &msgIn)
     {
         ros::Time t1 = ros::Time::now();
         cloudInfo = *msgIn;                                      // new cloud info
