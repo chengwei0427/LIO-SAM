@@ -192,6 +192,10 @@ public:
         {
             sensor = SensorType::ROBOSENSE;
         }
+        else if (sensorStr == "livox")
+        {
+            sensor = SensorType::LIVOX;
+        }
         else
         {
             ROS_ERROR_STREAM(
@@ -254,11 +258,13 @@ public:
         usleep(100);
     }
 
-    sensor_msgs::Imu imuConverter(const sensor_msgs::Imu &imu_in)
+    sensor_msgs::Imu imuConverter(const sensor_msgs::Imu &imu_in, SensorType sensor = SensorType::VELODYNE)
     {
         sensor_msgs::Imu imu_out = imu_in;
         // rotate acceleration
         Eigen::Vector3d acc(imu_in.linear_acceleration.x, imu_in.linear_acceleration.y, imu_in.linear_acceleration.z);
+        if (sensor == SensorType::LIVOX)
+            acc *= 9.805;
         acc = extRot * acc;
         imu_out.linear_acceleration.x = acc.x();
         imu_out.linear_acceleration.y = acc.y();

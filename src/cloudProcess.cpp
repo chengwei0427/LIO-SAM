@@ -1,5 +1,5 @@
 #include "utility.h"
-// #include "my_utility.h"
+#include "livox_ros_driver/CustomMsg.h"
 #include "lio_sam/cloud_info.h"
 
 struct VelodynePointXYZIRT
@@ -38,6 +38,18 @@ struct RobosensePointXYZIRT
 POINT_CLOUD_REGISTER_POINT_STRUCT(RobosensePointXYZIRT,
                                   (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(uint16_t, ring, ring)(double, timestamp, timestamp))
 
+struct LiovxPointCustomMsg
+{
+    PCL_ADD_POINT4D
+    PCL_ADD_INTENSITY;
+    float time;
+    uint16_t ring;
+    uint16_t tag;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+POINT_CLOUD_REGISTER_POINT_STRUCT(LiovxPointCustomMsg,
+                                  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(float, time, time)(uint16_t, ring, ring)(uint16_t, tag, tag))
+
 // Use the Velodyne point format as a common representation
 using PointXYZIRT = VelodynePointXYZIRT;
 
@@ -62,6 +74,7 @@ private:
     std::deque<nav_msgs::Odometry> odomQueue;
 
     std::deque<sensor_msgs::PointCloud2> cloudQueue;
+    std::deque<livox_ros_driver::CustomMsg> cloudQueue_livox;
     sensor_msgs::PointCloud2 currentCloudMsg;
 
     double *imuTime = new double[queueLength];
@@ -75,6 +88,7 @@ private:
 
     pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
     pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
+    pcl::PointCloud<LiovxPointCustomMsg>::Ptr tmpLivoxCloudIn;
     pcl::PointCloud<PointType>::Ptr fullCloud;
 
     int deskewFlag;
@@ -94,7 +108,10 @@ public:
     {
         subImu = nh.subscribe<sensor_msgs::Imu>(imuTopic, 2000, &CloudProcess::imuHandler, this, ros::TransportHints().tcpNoDelay());
         subOdom = nh.subscribe<nav_msgs::Odometry>(odomTopic + "_incremental", 2000, &CloudProcess::odometryHandler, this, ros::TransportHints().tcpNoDelay());
-        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 5, &CloudProcess::cloudHandler, this, ros::TransportHints().tcpNoDelay());
+
+        subLaserCloud = (sensor == SensorType::LIVOX)
+                            ? nh.subscribe(pointCloudTopic, 5, &CloudProcess::cloudHandler2, this, ros::TransportHints().tcpNoDelay())
+                            : nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 5, &CloudProcess::cloudHandler, this, ros::TransportHints().tcpNoDelay());
 
         pubExtractedCloud = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1);
         pubLaserCloudInfo = nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1);
@@ -109,6 +126,7 @@ public:
     {
         laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
         tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
+        tmpLivoxCloudIn.reset(new pcl::PointCloud<LiovxPointCustomMsg>());
         fullCloud.reset(new pcl::PointCloud<PointType>());
 
         resetParameters();
@@ -136,7 +154,7 @@ public:
 
     void imuHandler(const sensor_msgs::Imu::ConstPtr &imuMsg)
     {
-        sensor_msgs::Imu thisImu = imuConverter(*imuMsg);
+        sensor_msgs::Imu thisImu = imuConverter(*imuMsg, sensor);
 
         std::lock_guard<std::mutex> lock1(imuLock);
         imuQueue.push_back(thisImu);
@@ -146,6 +164,21 @@ public:
     {
         std::lock_guard<std::mutex> lock2(odoLock);
         odomQueue.push_back(*odometryMsg);
+    }
+
+    void cloudHandler2(const livox_ros_driver::CustomMsgConstPtr &laserCloudMsg)
+    {
+        if (!cachePointCloud2(laserCloudMsg))
+            return;
+
+        if (!deskewInfo())
+            return;
+
+        projectPointCloud();
+
+        publishClouds();
+
+        resetParameters();
     }
 
     void cloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
@@ -163,6 +196,53 @@ public:
         resetParameters();
     }
 
+    void moveFromCustomMsg(livox_ros_driver::CustomMsg &Msg, pcl::PointCloud<PointXYZIRT> &cloud)
+    {
+        cloud.clear();
+        cloud.reserve(Msg.point_num);
+        PointXYZIRT point;
+
+        cloud.header.frame_id = Msg.header.frame_id;
+        cloud.header.stamp = Msg.header.stamp.toNSec() / 1000;
+        cloud.header.seq = Msg.header.seq;
+
+        for (uint i = 0; i < Msg.point_num - 1; i++)
+        {
+            point.x = Msg.points[i].x;
+            point.y = Msg.points[i].y;
+            point.z = Msg.points[i].z;
+            point.intensity = Msg.points[i].reflectivity;
+            // point.tag = Msg.points[i].tag;
+            point.time = Msg.points[i].offset_time * 1e-9;
+            point.ring = Msg.points[i].line;
+            cloud.push_back(point);
+        }
+    }
+
+    bool cachePointCloud2(const livox_ros_driver::CustomMsgConstPtr &laserCloudMsg)
+    {
+        cloudQueue_livox.push_back(*laserCloudMsg);
+        if (cloudQueue_livox.size() <= 2)
+            return false;
+        // convert cloud
+        livox_ros_driver::CustomMsg currentCloudMsg = std::move(cloudQueue_livox.front());
+        cloudQueue_livox.pop_front();
+
+        moveFromCustomMsg(currentCloudMsg, *laserCloudIn);
+        // get timestamp
+        cloudHeader = currentCloudMsg.header;
+        timeScanCur = cloudHeader.stamp.toSec();
+        timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
+
+        // check dense flag
+        if (laserCloudIn->is_dense == false)
+        {
+            ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
+            ros::shutdown();
+        }
+
+        return true;
+    }
     bool cachePointCloud(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
     {
         // cache point cloud
@@ -173,7 +253,7 @@ public:
         // convert cloud
         currentCloudMsg = std::move(cloudQueue.front());
         cloudQueue.pop_front();
-        if (sensor == SensorType::VELODYNE || sensor == SensorType::LIVOX)
+        if (sensor == SensorType::VELODYNE)
         {
             pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
         }
