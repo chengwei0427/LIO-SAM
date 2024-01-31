@@ -38,7 +38,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPointXYZIRT,
                                   (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(uint32_t, t, t)(uint16_t, reflectivity, reflectivity)(uint8_t, ring, ring)(uint16_t, noise, noise)(uint32_t, range, range))
 
 // typedef pcl::PointXYZI PointType;
-typedef pcl::PointXYZINormal PointType;
+// typedef pcl::PointXYZINormal PointType;
 
 sensor_msgs::PointCloud2 publishCloud(ros::Publisher *thisPub, pcl::PointCloud<PointType>::Ptr thisCloud, ros::Time thisStamp, std::string thisFrame)
 {

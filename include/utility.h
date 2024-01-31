@@ -62,7 +62,8 @@ enum class SensorType
 {
     VELODYNE,
     OUSTER,
-    ROBOSENSE
+    ROBOSENSE,
+    LIVOX
 };
 
 class ParamServer
@@ -268,19 +269,6 @@ public:
         imu_out.angular_velocity.x = gyr.x();
         imu_out.angular_velocity.y = gyr.y();
         imu_out.angular_velocity.z = gyr.z();
-        // rotate roll pitch yaw
-        /*Eigen::Quaterniond q_from(imu_in.orientation.w, imu_in.orientation.x, imu_in.orientation.y, imu_in.orientation.z);
-        Eigen::Quaterniond q_final = q_from * extQRPY;
-        imu_out.orientation.x = q_final.x();
-        imu_out.orientation.y = q_final.y();
-        imu_out.orientation.z = q_final.z();
-        imu_out.orientation.w = q_final.w();
-
-        if (sqrt(q_final.x()*q_final.x() + q_final.y()*q_final.y() + q_final.z()*q_final.z() + q_final.w()*q_final.w()) < 0.1)
-        {
-            ROS_ERROR("Invalid quaternion, please use a 9-axis IMU!");
-            ros::shutdown();
-        }*/
 
         return imu_out;
     }
